@@ -4,21 +4,19 @@ class TokensController < ApplicationController
     # otherwise it's not particularly useful
     @token = Token.where(value: params[:token][:value]).first
 
-    unless @token.blank?
+
+    if @token.blank?
       @token = Token.create(token_params)
-
-      puts "URRA"
-
-      raise "Message is empty!" if params[:message].blank?
-
-      Delayed::Job.enqueue PushJob.new(@token.value, params[:message])
     end
+
+    raise "Message is empty!" if params[:message].blank?
+
+    Delayed::Job.enqueue PushJob.new(@token.value, params)
 
     render json: {success: true}
   end
 
   private
-
   def token_params
     params.require(:token).permit(:value)
   end
