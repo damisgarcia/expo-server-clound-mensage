@@ -1,51 +1,30 @@
 class TokensController < ApplicationController
-  before_action :set_token, only: [:show, :update, :destroy]
-
-  # GET /tokens
-  def index
-    @tokens = Token.all
-
-    render json: @tokens
-  end
-
-  # GET /tokens/1
-  def show
-    render json: @token
-  end
-
-  # POST /tokens
   def create
-    @token = Token.new(token_params)
+    # You probably actually want to associate this with a user,
+    # otherwise it's not particularly useful
+    @token = Token.where(value: params[:token][:value]).first
 
-    if @token.save
-      render json: @token, status: :created, location: @token
-    else
-      render json: @token.errors, status: :unprocessable_entity
+    unless @token.blank?
+      @token = Token.create(token_params)
+
+      puts "URRA"
+
+      raise "Message is empty!" if params[:message].blank?
+
+      Delayed::Job.enqueue PushJob.new(@token.value, params[:message])
     end
-  end
 
-  # PATCH/PUT /tokens/1
-  def update
-    if @token.update(token_params)
-      render json: @token
-    else
-      render json: @token.errors, status: :unprocessable_entity
-    end
-  end
-
-  # DELETE /tokens/1
-  def destroy
-    @token.destroy
+    render json: {success: true}
   end
 
   private
-    # Use callbacks to share common setup or constraints between actions.
-    def set_token
-      @token = Token.find(params[:id])
-    end
 
-    # Only allow a trusted parameter "white list" through.
-    def token_params
-      params.require(:token).permit(:value)
-    end
+  def token_params
+    params.require(:token).permit(:value)
+  end
+
+  def exponent
+    @exponent ||= Exponent::Push::Client.new
+  end
+
 end
